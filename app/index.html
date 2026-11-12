@@ -11,7 +11,7 @@
   <body>
     <header>
       <h1>incidents</h1>
-      <p class="sub">sched-prod · tonight · times in your local zone</p>
+      <p class="sub">sched-prod · tonight · times in your local zone · pick a row to open it</p>
     </header>
     <main data-testid="board" aria-busy="true">
       <p class="status" role="alert" hidden></p>
@@ -19,6 +19,14 @@
       <p data-testid="empty" class="empty" hidden>No incidents tonight.</p>
       <ul data-testid="incident-list" class="list" hidden></ul>
     </main>
+    <aside data-testid="incident-panel" class="panel" aria-label="Incident" hidden>
+      <button type="button" class="p-close" aria-label="Close">×</button>
+      <h2 class="p-id"></h2>
+      <p><span class="p-sev"></span> · opened <time class="p-time"></time></p>
+      <p class="p-what"></p>
+      <button type="button" data-testid="panel-ack" class="p-ack">Ack</button>
+      <p class="p-acked" hidden></p>
+    </aside>
     <footer>sched-prod incident board · build <code data-testid="build-sha">__BUILD_SHA__</code></footer>
   </body>
 </html>

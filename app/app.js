@@ -35,36 +35,80 @@ function markAcked(li, at) {
   cell.replaceChildren(el('span', { 'data-testid': 'acked', class: 'acked', title: localTime(at) }, `acked ${clock.format(new Date(at))}`));
 }
 
+// The row only opens its incident in the panel; the Ack lives in the panel (product's decision after step 1:
+// a new incident landing mid-click moved another row under the pointer and acked it). The panel stays put while the list moves,
+// and its Ack always acks the incident the panel names.
+const panel = document.querySelector('[data-testid="incident-panel"]');
+const panelId = panel.querySelector('.p-id');
+const panelSev = panel.querySelector('.p-sev');
+const panelWhat = panel.querySelector('.p-what');
+const panelTime = panel.querySelector('.p-time');
+const panelAck = panel.querySelector('[data-testid="panel-ack"]');
+const panelAcked = panel.querySelector('.p-acked');
+let shown = null; // the incident id the panel names
+const pending = new Set();
+
+function showPanel(id) {
+  const i = incidents.get(id);
+  if (!i) return;
+  shown = id;
+  panel.dataset.id = id;
+  panelId.textContent = id;
+  panelSev.textContent = i.severity;
+  panelSev.className = `p-sev ${i.severity}`;
+  panelWhat.textContent = `${i.service} · ${i.region} · ${i.summary}`;
+  panelTime.setAttribute('datetime', i.openedAt);
+  panelTime.textContent = localTime(i.openedAt);
+  const done = acked.get(id);
+  panelAck.hidden = Boolean(done);
+  panelAck.disabled = pending.has(id);
+  panelAck.textContent = pending.has(id) ? 'Acking…' : `Ack ${id}`;
+  panelAcked.hidden = !done;
+  panelAcked.textContent = done ? `acked ${clock.format(new Date(done))}` : '';
+  for (const [rid, li] of rows) li.classList.toggle('selected', rid === id);
+  panel.hidden = false;
+}
+
+function closePanel() {
+  shown = null;
+  panel.hidden = true;
+  for (const li of rows.values()) li.classList.remove('selected');
+}
+
 function makeRow(i) {
-  const li = el('li', { 'data-testid': 'incident-row', 'data-id': i.id, class: `row ${i.severity}` });
+  const li = el('li', { 'data-testid': 'incident-row', 'data-id': i.id, class: `row ${i.severity}`, tabindex: '0', 'aria-label': `Open ${i.id}` });
   li.append(
     el('span', { class: 'id' }, i.id),
     el('span', { class: 'sev' }, i.severity),
     el('span', { class: 'what' }, `${i.service} · ${i.region} · ${i.summary}`),
     el('time', { datetime: i.openedAt, title: i.openedAt }, localTime(i.openedAt)),
+    el('span', { class: 'act' }),
   );
-  const act = el('span', { class: 'act' });
-  const btn = el('button', { type: 'button', 'data-testid': 'ack' }, 'Ack');
-  btn.addEventListener('click', () => onAck(i.id, li, btn));
-  act.append(btn);
-  li.append(act);
+  li.addEventListener('click', () => showPanel(i.id));
+  li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showPanel(i.id); } });
   if (acked.has(i.id)) markAcked(li, acked.get(i.id));
   return li;
 }
 
-async function onAck(id, li, btn) {
-  btn.disabled = true;
-  btn.textContent = 'Acking…';
+async function onAck() {
+  const id = shown; // the incident the panel names at the moment of the click
+  if (!id || pending.has(id) || acked.has(id)) return;
+  pending.add(id);
+  showPanel(id);
   try {
-    const reply = await ack(id); // R2: api.js sends the latest cursor and keeps the receipt
+    const reply = await ack(id); // api.js sends the latest cursor and keeps the receipt
     acked.set(id, reply.ackedAt);
-    markAcked(li, reply.ackedAt);
+    markAcked(rows.get(id), reply.ackedAt);
   } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'Ack';
     showStatus(`Ack failed for ${id}: ${e.message}`);
+  } finally {
+    pending.delete(id);
+    if (shown === id) showPanel(id);
   }
 }
+panelAck.addEventListener('click', onAck);
+panel.querySelector('.p-close').addEventListener('click', closePanel);
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && shown) closePanel(); });
 
 function showStatus(text) {
   status.textContent = text;
@@ -88,6 +132,7 @@ async function refresh() {
     const page = await fetchIncidents();
     for (const i of page.incidents) incidents.set(i.id, i);
     render();
+    if (shown) showPanel(shown);
     loader.hidden = true; // R3: gone once incidents are on screen
     board.setAttribute('aria-busy', 'false');
     showStatus('');

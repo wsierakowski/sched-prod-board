@@ -8,13 +8,15 @@ what just broke and takes it.
 | flow | who | what happens |
 |------|-----|--------------|
 | `open-board` | on-call | opens the board; sees tonight's incidents |
-| `ack-incident` | on-call | picks an incident on the board and acks it — "I've got this one" |
+| `ack-incident` | on-call | picks an incident on the board, which opens its incident panel, and acks it there — "I've got this one" |
 | `watch-board` | on-call | keeps the board open; it stays current without a reload |
 
 ## Requirements
 
 - **R1** New incidents appear live at the top of the list, newest first.
-- **R2** Each incident row has an **Ack** button. Ack sends the ack (`api.ack(id)`) and marks the row acked.
+- **R2** ~~Each incident row has an **Ack** button.~~ Changed by product after step 1 (SCHED-4515): a row has no Ack. Picking a row
+  (click, Enter or Space) opens its **incident panel**, which names the incident and holds the **Ack**. Ack sends the ack
+  (`api.ack(id)`) for the incident the panel names, and marks the row and the panel acked. The panel stays put while the list moves.
 - **R3** Show a loader until incidents load.
 - **R4** The board refreshes itself every 2 seconds while open.
 - **R5** Times show in the viewer's local time; day before month for EU locales (dd/mm).
@@ -29,8 +31,10 @@ what just broke and takes it.
 | `empty` | what shows when there are no incidents |
 | `incident-list` | the list |
 | `incident-row` | one incident row, with `data-id="<incident id>"` |
-| `ack` | the Ack button in a row |
+| ~~`ack`~~ | ~~the Ack button in a row~~ — removed (SCHED-4515): rows have no Ack |
 | `acked` | the acked mark in a row |
+| `incident-panel` | the incident panel, naming the incident id (SCHED-4515) |
+| `panel-ack` | the panel's Ack (SCHED-4515) |
 | `build-sha` | the sha in the footer |
 
 ## Done
