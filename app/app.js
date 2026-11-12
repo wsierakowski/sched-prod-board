@@ -21,6 +21,7 @@ const fmt = new Intl.DateTimeFormat(undefined, {
   timeZoneName: 'short',
 });
 const localTime = (iso) => fmt.format(new Date(iso));
+const clock = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 function el(tag, attrs = {}, text) {
   const e = document.createElement(tag);
@@ -31,7 +32,7 @@ function el(tag, attrs = {}, text) {
 
 function markAcked(li, at) {
   const cell = li.querySelector('.act');
-  cell.replaceChildren(el('span', { 'data-testid': 'acked', class: 'acked', title: at }, `acked ${localTime(at)}`));
+  cell.replaceChildren(el('span', { 'data-testid': 'acked', class: 'acked', title: localTime(at) }, `acked ${clock.format(new Date(at))}`));
 }
 
 function makeRow(i) {
