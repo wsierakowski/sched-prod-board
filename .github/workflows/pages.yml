@@ -1,0 +1,37 @@
+# Deploys app/ to GitHub Pages on every push to main: stamps the commit sha (R6) and writes config.js from the
+# BOARD_SESSION secret, so the session is never committed. The prove workflow (prove.yml) is the course's, unedited.
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        env:
+          BOARD_SESSION: ${{ secrets.BOARD_SESSION }}
+        run: |
+          test -n "$BOARD_SESSION" || { echo "BOARD_SESSION secret is not set"; exit 1; }
+          mkdir -p _site && cp -r app/. _site/
+          sed -i "s/__BUILD_SHA__/$GITHUB_SHA/g" _site/index.html
+          printf "// Written by the pages workflow at build %s.\nexport const API = 'https://hq.mega.dev/challenges/show-me-when/api';\nexport const SESSION = '%s';\n" "$GITHUB_SHA" "$BOARD_SESSION" > _site/config.js
+          grep -q "content=\"$GITHUB_SHA\"" _site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
